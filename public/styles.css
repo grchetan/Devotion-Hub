@@ -1,0 +1,160 @@
+:root {
+  --saffron: #f39c12;
+  --gold: #f1c40f;
+  --cream: #fffaf0;
+  --deep: #6b3e09;
+  --danger: #b00020;
+  --ok: #1d7a46;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  background: linear-gradient(130deg, #fff8dc, #ffecc8, #fff);
+  color: var(--deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.bg-glow {
+  position: fixed;
+  width: 42vw;
+  height: 42vw;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(241, 196, 15, 0.35), transparent 72%);
+  top: -12vw;
+  right: -10vw;
+  z-index: -1;
+}
+
+.app-card {
+  width: min(980px, 100%);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(243, 156, 18, 0.3);
+  border-radius: 20px;
+  box-shadow: 0 20px 35px rgba(107, 62, 9, 0.13);
+  padding: 24px;
+}
+
+h1 {
+  margin: 0;
+}
+
+.subheading {
+  margin-top: 8px;
+  color: #8a5c13;
+}
+
+.user-setup,
+.input-row,
+.stats-row,
+.leaderboard-header {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+input,
+button {
+  font-size: 1rem;
+  border-radius: 12px;
+  border: 1px solid #e2b564;
+  padding: 10px 14px;
+}
+
+input {
+  flex: 1;
+}
+
+button {
+  cursor: pointer;
+  background: linear-gradient(120deg, var(--saffron), var(--gold));
+  color: #4f2b06;
+  font-weight: 600;
+}
+
+button.outline {
+  background: white;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+.typing-panel,
+.leaderboard-panel {
+  margin-top: 18px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--cream);
+}
+
+.label {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.message {
+  margin: 10px 0 0;
+  min-height: 24px;
+  font-weight: 600;
+}
+
+.message.ok {
+  color: var(--ok);
+}
+
+.message.warn {
+  color: var(--danger);
+}
+
+.hidden {
+  display: none;
+}
+
+table {
+  margin-top: 10px;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 9px;
+  text-align: left;
+  border-bottom: 1px solid #f6d8a3;
+}
+
+.pulse {
+  animation: pulse 0.33s ease;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 700px) {
+  .stats-row,
+  .leaderboard-header,
+  .input-row,
+  .user-setup {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
