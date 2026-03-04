@@ -1,32 +1,45 @@
 # Radha Naam Leaderboard
 
-A spiritual-themed typing web app where users manually type **Radha** to earn points and rise on a live leaderboard.
+A secure devotional typing platform where users type **Radha** and compete in a real-time leaderboard, plus a protected admin dashboard.
 
 ## Features
 
-- Exact word validation (`Radha` only) with real-time score updates.
-- Anti-cheat protections: paste disabled, Ctrl/Cmd+V blocked, one-word submissions, backend delay checks.
-- Abuse detection with warnings and 24-hour temporary ban after 3 abusive attempts.
-- Real-time leaderboard sorted by total count.
-- Username + session binding to prevent session swapping.
-- Backend security via request rate limiting and strict server-side validation.
-- Optional daily reset endpoint secured with reset key.
+### User
+- Username + session start
+- Exact `Radha` typing earns +1 score
+- Live leaderboard updates
+- Paste and Ctrl/Cmd+V disabled
+- Anti-spam delay validation
+- Abusive words detection with 3 warnings then 24h ban
 
-## Stack
+### Security
+- Global API rate limiting
+- Admin login rate limiting
+- Server-side validation
+- JWT-protected admin routes
+- Bcrypt hashed admin password
 
-- Frontend: HTML/CSS/JavaScript
-- Backend: Node.js + Express
-- Database: MongoDB (with automatic in-memory fallback when `MONGO_URI` is missing)
+### Admin
+- Login with username/password
+- Dashboard stats: total users, active users, total count, banned users, total submissions
+- User management: ban / unban
+- Leaderboard reset
+- Activity feed from DB logs
+
+## Tech Stack
+- Node.js + Express
+- MongoDB + Mongoose
+- HTML/CSS/JavaScript frontend
 
 ## Run
 
 ```bash
 npm install
-npm start
+node server.js
 ```
 
-Open: `http://localhost:3000`
+- User app: `http://localhost:3000`
+- Admin panel: `http://localhost:3000/admin.html`
 
 ## Environment
-
-Copy `.env.example` to `.env` and set values as needed.
+Copy `.env.example` to `.env` and configure values.

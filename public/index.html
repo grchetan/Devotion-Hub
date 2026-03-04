@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -7,47 +7,43 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="bg-glow"></div>
-    <main class="app-card">
-      <h1>Radha Naam Leaderboard</h1>
-      <p class="subheading">Type with devotion and rise on the leaderboard ✨</p>
+    <main class="container">
+      <header>
+        <h1>Radha Naam Leaderboard</h1>
+        <p>Type <strong>Radha</strong> with devotion and climb the leaderboard.</p>
+        <a class="admin-link" href="/admin.html">Admin Panel</a>
+      </header>
 
-      <section class="user-setup">
-        <input id="username" type="text" maxlength="24" placeholder="Enter your username" />
-        <button id="startBtn">Start Devotion</button>
+      <section class="card">
+        <h2>Start Session</h2>
+        <div class="row">
+          <input id="usernameInput" type="text" maxlength="24" placeholder="Enter username" />
+          <button id="startBtn">Start</button>
+        </div>
       </section>
 
-      <section class="typing-panel hidden" id="typingPanel">
-        <div class="stats-row">
-          <div>
-            <span class="label">Total Radha Count</span>
-            <h2 id="totalCount">0</h2>
-          </div>
-          <div>
-            <span class="label">Warnings</span>
-            <h2 id="warningsCount">0 / 3</h2>
-          </div>
+      <section id="typingSection" class="card hidden">
+        <div class="stats">
+          <div><span>Total Count</span><strong id="countText">0</strong></div>
+          <div><span>Warnings</span><strong id="warningText">0 / 3</strong></div>
         </div>
 
-        <div class="input-row" id="inputRow">
-          <input id="radhaInput" type="text" placeholder='Type "Radha"' autocomplete="off" />
-          <button id="submitBtn">Offer</button>
+        <div class="row">
+          <input id="wordInput" type="text" placeholder='Type "Radha"' autocomplete="off" />
+          <button id="submitBtn">Submit</button>
         </div>
 
-        <p id="message" class="message">Begin your chanting with pure focus.</p>
+        <p id="messageText" class="message">Use only manual typing. Paste is disabled.</p>
       </section>
 
-      <section class="leaderboard-panel">
-        <div class="leaderboard-header">
-          <h3>Live Leaderboard</h3>
-          <button id="resetBtn" class="outline">Daily Reset</button>
-        </div>
+      <section class="card">
+        <h2>Live Leaderboard</h2>
         <table>
           <thead>
             <tr>
               <th>Rank</th>
               <th>Username</th>
-              <th>Total Radha Count</th>
+              <th>Radha Count</th>
             </tr>
           </thead>
           <tbody id="leaderboardBody"></tbody>
@@ -55,6 +51,6 @@
       </section>
     </main>
 
-    <script src="script.js"></script>
+    <script src="/app.js"></script>
   </body>
 </html>

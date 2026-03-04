@@ -1,109 +1,102 @@
-const tokenKey = 'radhaAdminToken';
+const TOKEN_KEY = 'radhaAdminToken';
 
-const loginBox = document.getElementById('loginBox');
+const loginSection = document.getElementById('loginSection');
 const panel = document.getElementById('panel');
-const loginMsg = document.getElementById('loginMsg');
+const loginMessage = document.getElementById('loginMessage');
 const statsGrid = document.getElementById('statsGrid');
-const activityFeed = document.getElementById('activityFeed');
-const usersBody = document.getElementById('usersBody');
-const abuseList = document.getElementById('abuseList');
+const usersTableBody = document.getElementById('usersTableBody');
+const activityList = document.getElementById('activityList');
 const leaderboardList = document.getElementById('leaderboardList');
 
-function getToken() {
-  return localStorage.getItem(tokenKey) || '';
+function token() {
+  return localStorage.getItem(TOKEN_KEY) || '';
 }
 
-function setToken(token) {
-  localStorage.setItem(tokenKey, token);
+function setToken(value) {
+  localStorage.setItem(TOKEN_KEY, value);
 }
 
 function clearToken() {
-  localStorage.removeItem(tokenKey);
+  localStorage.removeItem(TOKEN_KEY);
 }
 
-async function api(path, options = {}) {
-  const token = getToken();
-  const res = await fetch(path, {
+function formatDate(value) {
+  return value ? new Date(value).toLocaleString() : '-';
+}
+
+async function requestJSON(url, options = {}) {
+  const t = token();
+  const response = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
       ...(options.headers || {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(t ? { Authorization: `Bearer ${t}` } : {}),
     },
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Request failed');
+
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Request failed');
   return data;
 }
 
-function showPanel() {
-  loginBox.classList.add('hidden');
+function openPanel() {
+  loginSection.classList.add('hidden');
   panel.classList.remove('hidden');
 }
 
-function showLogin() {
+function openLogin() {
   panel.classList.add('hidden');
-  loginBox.classList.remove('hidden');
-}
-
-function fmtDate(value) {
-  return value ? new Date(value).toLocaleString() : '-';
+  loginSection.classList.remove('hidden');
 }
 
 async function login() {
+  const username = document.getElementById('adminUsername').value.trim();
+  const password = document.getElementById('adminPassword').value;
+
   try {
-    const username = document.getElementById('adminUsername').value.trim();
-    const password = document.getElementById('adminPassword').value;
-    const data = await api('/api/admin/login', {
+    const data = await requestJSON('/api/admin/login', {
       method: 'POST',
-      headers: {},
       body: JSON.stringify({ username, password }),
     });
+
     setToken(data.token);
-    loginMsg.textContent = '';
-    showPanel();
-    refreshAll();
+    loginMessage.textContent = '';
+    openPanel();
+    await loadDashboard();
   } catch (_error) {
-    loginMsg.textContent = 'Invalid username or password.';
+    loginMessage.textContent = 'Invalid username or password.';
   }
 }
 
-async function loadDashboard() {
-  const data = await api('/api/admin/dashboard');
+function renderStats(stats) {
   const cards = [
-    ['Total Users', data.totalUsers],
-    ['Active Users Today', data.activeToday],
-    ['Total Radha Count', data.totalRadha],
-    ['Banned Users', data.bannedUsers],
-    ['Total Submissions', data.totalSubmissions],
+    ['Total Users', stats.totalUsers],
+    ['Active Users Today', stats.activeUsers],
+    ['Total Radha Count', stats.totalRadhaCount],
+    ['Banned Users', stats.bannedUsers],
+    ['Total Submissions', stats.totalSubmissions],
   ];
-  statsGrid.innerHTML = cards.map(([name, value]) => `<div class="stat-card"><strong>${value}</strong><div>${name}</div></div>`).join('');
-}
 
-async function loadActivity() {
-  const data = await api('/api/admin/activity?limit=25');
-  activityFeed.innerHTML = data.activity
-    .map((a) => `<li><strong>${a.username}</strong> ${a.action} <br/><small>${fmtDate(a.timestamp)}</small></li>`)
+  statsGrid.innerHTML = cards
+    .map(([label, value]) => `<article class="stat"><strong>${value}</strong><div>${label}</div></article>`)
     .join('');
 }
 
-async function loadUsers() {
-  const data = await api('/api/admin/users');
-  usersBody.innerHTML = data.users
-    .map((u) => {
-      const status = u.ban_status?.isBanned && u.ban_status?.banUntil && new Date(u.ban_status.banUntil) > new Date() ? 'Banned' : 'Active';
+function renderUsers(users) {
+  usersTableBody.innerHTML = users
+    .map((user) => {
+      const banned = user.banStatus?.isBanned && user.banStatus?.bannedUntil && new Date(user.banStatus.bannedUntil) > new Date();
       return `
         <tr>
-          <td>${u.username}</td>
-          <td>${u.radha_count || 0}</td>
-          <td>${u.warnings || 0}</td>
-          <td>${status}</td>
-          <td>${fmtDate(u.last_activity)}</td>
+          <td>${user.username}</td>
+          <td>${user.radhaCount}</td>
+          <td>${user.warnings}</td>
+          <td>${banned ? 'Banned' : 'Active'}</td>
+          <td>${formatDate(user.lastActivity)}</td>
           <td class="actions">
-            <button onclick="adminAction('ban','${u.sessionId}')">Ban</button>
-            <button onclick="adminAction('unban','${u.sessionId}')">Unban</button>
-            <button onclick="adminAction('reset-user','${u.sessionId}')">Reset</button>
-            <button onclick="adminDelete('${u.sessionId}')">Delete</button>
+            <button onclick="adminAction('ban', '${user.sessionId}')">Ban</button>
+            <button onclick="adminAction('unban', '${user.sessionId}')">Unban</button>
           </td>
         </tr>
       `;
@@ -111,54 +104,54 @@ async function loadUsers() {
     .join('');
 }
 
-async function loadAbuse() {
-  const data = await api('/api/admin/abuse-monitor');
-  const flagged = data.flaggedUsers.map((u) => `<li>${u.username} • warnings: ${u.warnings} • abusive attempts: ${u.abusive_attempts} • ${u.isBanned ? 'Banned' : 'Active'}</li>`);
-  const suspicious = data.suspiciousActivity.map((s) => `<li>${s.username} • ${s.action} • ${fmtDate(s.timestamp)}</li>`);
-  abuseList.innerHTML = [...flagged, ...suspicious].join('') || '<li>No abuse signals found.</li>';
+function renderActivities(items) {
+  activityList.innerHTML = items
+    .map((item) => `<li><strong>${item.username}</strong>: ${item.action}<br/><small>${formatDate(item.createdAt)}</small></li>`)
+    .join('');
 }
 
-async function loadLeaderboard() {
-  const data = await api('/api/admin/leaderboard');
-  leaderboardList.innerHTML = data.leaderboard.slice(0, 20).map((x) => `<li>#${x.rank} ${x.username} — ${x.radha_count}</li>`).join('');
+function renderLeaderboard(items) {
+  leaderboardList.innerHTML = items
+    .map((row) => `<li>#${row.rank} ${row.username} — ${row.radhaCount}</li>`)
+    .join('');
+}
+
+async function loadDashboard() {
+  try {
+    const dashboard = await requestJSON('/api/admin/dashboard');
+    const usersResponse = await requestJSON('/api/admin/users');
+
+    renderStats(dashboard.stats);
+    renderActivities(dashboard.activities);
+    renderLeaderboard(dashboard.leaderboard);
+    renderUsers(usersResponse.users);
+  } catch (_error) {
+    clearToken();
+    openLogin();
+  }
 }
 
 async function adminAction(action, sessionId) {
-  await api(`/api/admin/${action}`, { method: 'POST', body: JSON.stringify({ sessionId }) });
-  refreshAll();
-}
-
-async function adminDelete(sessionId) {
-  await api('/api/admin/delete-user', { method: 'DELETE', body: JSON.stringify({ sessionId }) });
-  refreshAll();
-}
-
-async function resetLeaderboard() {
-  await api('/api/admin/reset-leaderboard', { method: 'POST', body: '{}' });
-  refreshAll();
+  await requestJSON(`/api/admin/${action}`, {
+    method: 'POST',
+    body: JSON.stringify({ sessionId }),
+  });
+  await loadDashboard();
 }
 
 window.adminAction = adminAction;
-window.adminDelete = adminDelete;
-
-async function refreshAll() {
-  try {
-    await Promise.all([loadDashboard(), loadActivity(), loadUsers(), loadAbuse(), loadLeaderboard()]);
-  } catch (_error) {
-    clearToken();
-    showLogin();
-  }
-}
 
 document.getElementById('loginBtn').addEventListener('click', login);
 document.getElementById('logoutBtn').addEventListener('click', () => {
   clearToken();
-  showLogin();
+  openLogin();
 });
-document.getElementById('refreshLeaderboardBtn').addEventListener('click', loadLeaderboard);
-document.getElementById('resetLeaderboardBtn').addEventListener('click', resetLeaderboard);
+document.getElementById('resetLeaderboardBtn').addEventListener('click', async () => {
+  await requestJSON('/api/admin/reset-leaderboard', { method: 'POST', body: '{}' });
+  await loadDashboard();
+});
 
-if (getToken()) {
-  showPanel();
-  refreshAll();
+if (token()) {
+  openPanel();
+  loadDashboard();
 }

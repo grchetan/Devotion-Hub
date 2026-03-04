@@ -1,34 +1,33 @@
 const express = require('express');
-const rateLimit = require('express-rate-limit');
 const mongoose = require('mongoose');
-const path = require('path');
 const cors = require('cors');
+const path = require('path');
+const rateLimit = require('express-rate-limit');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
+const User = require('./models/User');
+const Admin = require('./models/Admin');
+const Activity = require('./models/Activity');
+
 const app = express();
-const PORT = process.env.PORT || 3000;
-const MONGO_URI = process.env.MONGO_URI;
-const RESET_KEY = process.env.RESET_KEY || 'radha-reset-key';
+const PORT = Number(process.env.PORT || 3000);
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/radha_leaderboard';
+const JWT_SECRET = process.env.JWT_SECRET || 'please-change-this-jwt-secret';
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin1234';
+const SUBMISSION_DELAY_MS = 700;
+const BAN_MS = 24 * 60 * 60 * 1000;
 
-const abusiveWords = new Set([
-  'abuse',
-  'badword',
-  'idiot',
-  'stupid',
-  'hate',
-  'damn',
-  'nonsense',
-]);
-
-const SUBMIT_DELAY_MS = 700;
-const BAN_DURATION_MS = 24 * 60 * 60 * 1000;
+const abusiveWords = new Set(['abuse', 'badword', 'idiot', 'stupid', 'hate', 'damn', 'nonsense']);
 
 app.use(cors());
 app.use(express.json({ limit: '10kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(
-  '/api/',
+  '/api',
   rateLimit({
     windowMs: 60 * 1000,
     max: 120,
@@ -38,259 +37,315 @@ app.use(
   })
 );
 
-const userSchema = new mongoose.Schema({
-  sessionId: { type: String, required: true, unique: true, index: true },
-  username: { type: String, required: true, trim: true },
-  radha_count: { type: Number, default: 0 },
-  warnings: { type: Number, default: 0 },
-  ban_status: {
-    isBanned: { type: Boolean, default: false },
-    banUntil: { type: Date, default: null },
-  },
-  last_activity: { type: Date, default: Date.now },
-  lastSubmissionAt: { type: Date, default: null },
+const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts. Try again later.' },
 });
 
-const UserModel = mongoose.models.User || mongoose.model('User', userSchema);
-
-class MemoryStore {
-  constructor() {
-    this.users = new Map();
-  }
-
-  async findUserBySession(sessionId) {
-    return this.users.get(sessionId) || null;
-  }
-
-  async createUser({ sessionId, username }) {
-    const user = {
-      sessionId,
-      username,
-      radha_count: 0,
-      warnings: 0,
-      ban_status: { isBanned: false, banUntil: null },
-      last_activity: new Date(),
-      lastSubmissionAt: null,
-    };
-    this.users.set(sessionId, user);
-    return user;
-  }
-
-  async saveUser(user) {
-    this.users.set(user.sessionId, user);
-    return user;
-  }
-
-  async topUsers() {
-    return [...this.users.values()]
-      .sort((a, b) => b.radha_count - a.radha_count || a.last_activity - b.last_activity)
-      .slice(0, 50);
-  }
-
-  async resetDaily() {
-    for (const user of this.users.values()) {
-      user.radha_count = 0;
-      user.last_activity = new Date();
-    }
-  }
+function cleanUsername(value) {
+  if (typeof value !== 'string') return '';
+  return value.trim().replace(/\s+/g, ' ').slice(0, 24);
 }
 
-const memoryStore = new MemoryStore();
-let dbEnabled = false;
-
-async function initializeDatabase() {
-  if (!MONGO_URI) {
-    console.warn('MONGO_URI not configured. Using in-memory storage.');
-    return;
-  }
-  try {
-    await mongoose.connect(MONGO_URI);
-    dbEnabled = true;
-    console.log('Connected to MongoDB.');
-  } catch (error) {
-    console.warn('MongoDB connection failed, using in-memory storage.', error.message);
-  }
+function cleanWord(value) {
+  if (typeof value !== 'string') return '';
+  return value.trim();
 }
 
-async function getUser(sessionId) {
-  return dbEnabled ? UserModel.findOne({ sessionId }) : memoryStore.findUserBySession(sessionId);
-}
-
-async function persistUser(user) {
-  if (dbEnabled) {
-    return user.save();
-  }
-  return memoryStore.saveUser(user);
-}
-
-async function createUser(sessionId, username) {
-  if (dbEnabled) {
-    return UserModel.create({ sessionId, username });
-  }
-  return memoryStore.createUser({ sessionId, username });
-}
-
-function sanitizeUsername(raw) {
-  if (typeof raw !== 'string') return '';
-  return raw.trim().replace(/\s+/g, ' ').slice(0, 24);
+function validSessionId(value) {
+  return typeof value === 'string' && value.length >= 12 && value.length <= 128;
 }
 
 function isBanned(user) {
-  if (!user?.ban_status?.isBanned || !user?.ban_status?.banUntil) return false;
-  return new Date(user.ban_status.banUntil).getTime() > Date.now();
+  return Boolean(user.banStatus?.isBanned && user.banStatus?.bannedUntil && user.banStatus.bannedUntil.getTime() > Date.now());
 }
 
-function validateSessionAndUsername(sessionId, username) {
-  return typeof sessionId === 'string' && sessionId.length >= 10 && typeof username === 'string' && username.length >= 2;
+function authAdmin(req, res, next) {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+
+  if (!token) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    req.admin = jwt.verify(token, JWT_SECRET);
+    return next();
+  } catch (_error) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+}
+
+async function logActivity(username, action, details = '') {
+  await Activity.create({ username, action, details });
+}
+
+async function ensureAdminSeeded() {
+  const found = await Admin.findOne({ username: ADMIN_USERNAME });
+  if (found) return;
+
+  const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
+  await Admin.create({ username: ADMIN_USERNAME, passwordHash });
+  console.log(`Seeded admin user: ${ADMIN_USERNAME}`);
 }
 
 app.post('/api/session/start', async (req, res) => {
   try {
     const sessionId = (req.body.sessionId || '').trim();
-    const username = sanitizeUsername(req.body.username);
+    const username = cleanUsername(req.body.username);
 
-    if (!validateSessionAndUsername(sessionId, username)) {
+    if (!validSessionId(sessionId) || username.length < 2) {
       return res.status(400).json({ error: 'Invalid session or username.' });
     }
 
-    let user = await getUser(sessionId);
+    let user = await User.findOne({ sessionId });
 
     if (!user) {
-      user = await createUser(sessionId, username);
+      user = await User.create({ sessionId, username });
     } else if (user.username !== username) {
-      return res.status(400).json({ error: 'Session already tied to a different username.' });
+      return res.status(400).json({ error: 'This session already belongs to another user.' });
     }
 
     if (isBanned(user)) {
       return res.status(403).json({
-        error: 'Temporarily banned for abusive language.',
-        banUntil: user.ban_status.banUntil,
+        error: 'You are temporarily banned for abusive activity.',
+        bannedUntil: user.banStatus.bannedUntil,
       });
     }
 
     return res.json({
       username: user.username,
-      radha_count: user.radha_count,
+      radhaCount: user.radhaCount,
       warnings: user.warnings,
-      ban_status: user.ban_status,
+      banned: false,
     });
-  } catch (error) {
-    return res.status(500).json({ error: 'Server error.' });
+  } catch (_error) {
+    return res.status(500).json({ error: 'Unable to start session.' });
   }
 });
 
 app.post('/api/submit', async (req, res) => {
   try {
     const sessionId = (req.body.sessionId || '').trim();
-    const username = sanitizeUsername(req.body.username);
-    const word = (req.body.word || '').trim();
+    const username = cleanUsername(req.body.username);
+    const word = cleanWord(req.body.word);
 
-    if (!validateSessionAndUsername(sessionId, username)) {
+    if (!validSessionId(sessionId) || username.length < 2) {
       return res.status(400).json({ error: 'Invalid session or username.' });
     }
 
-    const user = await getUser(sessionId);
+    const user = await User.findOne({ sessionId });
+
     if (!user || user.username !== username) {
       return res.status(401).json({ error: 'Session not found. Start again.' });
     }
 
     if (isBanned(user)) {
       return res.status(403).json({
-        error: 'You are banned for 24 hours due to repeated abusive words.',
-        banUntil: user.ban_status.banUntil,
+        error: 'You are banned for 24 hours due to abusive words.',
+        bannedUntil: user.banStatus.bannedUntil,
       });
     }
 
     const now = Date.now();
-    if (user.lastSubmissionAt && now - new Date(user.lastSubmissionAt).getTime() < SUBMIT_DELAY_MS) {
-      return res.status(429).json({ error: 'Too fast. Please type naturally.' });
+    if (user.lastSubmissionAt && now - user.lastSubmissionAt.getTime() < SUBMISSION_DELAY_MS) {
+      await logActivity(user.username, 'suspicious speed', 'Submission too fast');
+      return res.status(429).json({ error: 'You are typing too fast. Please slow down.' });
     }
 
+    user.totalSubmissions += 1;
+    user.lastSubmissionAt = new Date();
+    user.lastActivity = new Date();
+
     if (!word || word.includes(' ') || word.length > 16) {
-      user.lastSubmissionAt = new Date();
-      user.last_activity = new Date();
-      await persistUser(user);
+      await user.save();
       return res.status(400).json({ error: 'Only one word is allowed per submission.' });
     }
 
     if (abusiveWords.has(word.toLowerCase())) {
       user.warnings += 1;
-      user.last_activity = new Date();
-      user.lastSubmissionAt = new Date();
+      user.abusiveAttempts += 1;
+      await logActivity(user.username, 'abusive word', `Warnings: ${user.warnings}`);
+
       if (user.warnings >= 3) {
-        user.ban_status = {
-          isBanned: true,
-          banUntil: new Date(Date.now() + BAN_DURATION_MS),
-        };
+        user.banStatus.isBanned = true;
+        user.banStatus.bannedUntil = new Date(Date.now() + BAN_MS);
+        await logActivity(user.username, 'banned', 'Reached 3 warnings');
       }
-      await persistUser(user);
+
+      await user.save();
+
       return res.status(403).json({
         error: 'Warning: Abusive words are not allowed.',
         warnings: user.warnings,
-        banned: user.ban_status.isBanned,
-        banUntil: user.ban_status.banUntil,
+        banned: user.banStatus.isBanned,
+        bannedUntil: user.banStatus.bannedUntil,
       });
     }
 
-    user.lastSubmissionAt = new Date();
-    user.last_activity = new Date();
-
-    if (word === 'Radha') {
-      user.radha_count += 1;
-      await persistUser(user);
-      return res.json({
-        success: true,
-        radha_count: user.radha_count,
-        warnings: user.warnings,
-        milestone: user.radha_count % 50 === 0,
-      });
+    if (word !== 'Radha') {
+      await user.save();
+      return res.status(400).json({ error: 'Only exact word "Radha" counts.' });
     }
 
-    await persistUser(user);
-    return res.status(400).json({ error: 'Only exact word "Radha" counts.' });
-  } catch (error) {
-    return res.status(500).json({ error: 'Server error.' });
+    user.radhaCount += 1;
+    await user.save();
+
+    await logActivity(user.username, 'typed Radha', `Total ${user.radhaCount}`);
+
+    return res.json({
+      ok: true,
+      radhaCount: user.radhaCount,
+      warnings: user.warnings,
+      milestone: user.radhaCount % 50 === 0,
+    });
+  } catch (_error) {
+    return res.status(500).json({ error: 'Submission failed.' });
   }
 });
 
 app.get('/api/leaderboard', async (_req, res) => {
   try {
-    const users = dbEnabled
-      ? await UserModel.find().sort({ radha_count: -1, last_activity: 1 }).limit(50).lean()
-      : await memoryStore.topUsers();
+    const users = await User.find({}, { username: 1, radhaCount: 1 }).sort({ radhaCount: -1, username: 1 }).limit(100).lean();
 
-    const leaderboard = users.map((u, index) => ({
+    const leaderboard = users.map((item, index) => ({
       rank: index + 1,
-      username: u.username,
-      radha_count: u.radha_count,
+      username: item.username,
+      radhaCount: item.radhaCount,
     }));
 
-    return res.json({ leaderboard, updatedAt: new Date() });
-  } catch (error) {
-    return res.status(500).json({ error: 'Unable to load leaderboard.' });
+    return res.json({ leaderboard });
+  } catch (_error) {
+    return res.status(500).json({ error: 'Could not load leaderboard.' });
   }
 });
 
-app.post('/api/admin/reset-daily', async (req, res) => {
+app.post('/api/admin/login', adminLoginLimiter, async (req, res) => {
   try {
-    if (req.headers['x-reset-key'] !== RESET_KEY) {
-      return res.status(401).json({ error: 'Unauthorized reset request.' });
+    const username = cleanUsername(req.body.username);
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+
+    if (!username || !password) {
+      return res.status(401).json({ error: 'Invalid username or password.' });
     }
 
-    if (dbEnabled) {
-      await UserModel.updateMany({}, { $set: { radha_count: 0, last_activity: new Date() } });
-    } else {
-      await memoryStore.resetDaily();
+    const admin = await Admin.findOne({ username });
+
+    if (!admin) {
+      return res.status(401).json({ error: 'Invalid username or password.' });
     }
 
-    return res.json({ success: true, message: 'Daily leaderboard has been reset.' });
-  } catch (error) {
-    return res.status(500).json({ error: 'Reset failed.' });
+    const valid = await bcrypt.compare(password, admin.passwordHash);
+
+    if (!valid) {
+      return res.status(401).json({ error: 'Invalid username or password.' });
+    }
+
+    const token = jwt.sign({ username: admin.username, role: 'admin' }, JWT_SECRET, { expiresIn: '12h' });
+    return res.json({ token, username: admin.username });
+  } catch (_error) {
+    return res.status(500).json({ error: 'Login failed.' });
   }
 });
 
-initializeDatabase().then(() => {
+app.get('/api/admin/dashboard', authAdmin, async (_req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const [
+      totalUsers,
+      activeUsers,
+      totals,
+      bannedUsers,
+      recentActivities,
+      leaderboard,
+    ] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ lastActivity: { $gte: today } }),
+      User.aggregate([{ $group: { _id: null, radha: { $sum: '$radhaCount' }, submissions: { $sum: '$totalSubmissions' } } }]),
+      User.countDocuments({ 'banStatus.isBanned': true, 'banStatus.bannedUntil': { $gt: new Date() } }),
+      Activity.find().sort({ createdAt: -1 }).limit(30).lean(),
+      User.find({}, { username: 1, radhaCount: 1 }).sort({ radhaCount: -1, username: 1 }).limit(20).lean(),
+    ]);
+
+    return res.json({
+      stats: {
+        totalUsers,
+        activeUsers,
+        totalRadhaCount: totals[0]?.radha || 0,
+        bannedUsers,
+        totalSubmissions: totals[0]?.submissions || 0,
+      },
+      activities: recentActivities,
+      leaderboard: leaderboard.map((u, i) => ({ rank: i + 1, username: u.username, radhaCount: u.radhaCount })),
+    });
+  } catch (_error) {
+    return res.status(500).json({ error: 'Failed to load dashboard.' });
+  }
+});
+
+app.get('/api/admin/users', authAdmin, async (_req, res) => {
+  try {
+    const users = await User.find().sort({ radhaCount: -1, username: 1 }).lean();
+    return res.json({ users });
+  } catch (_error) {
+    return res.status(500).json({ error: 'Failed to load users.' });
+  }
+});
+
+app.post('/api/admin/ban', authAdmin, async (req, res) => {
+  const sessionId = (req.body.sessionId || '').trim();
+  if (!validSessionId(sessionId)) return res.status(400).json({ error: 'Invalid sessionId.' });
+
+  const user = await User.findOne({ sessionId });
+  if (!user) return res.status(404).json({ error: 'User not found.' });
+
+  user.banStatus.isBanned = true;
+  user.banStatus.bannedUntil = new Date(Date.now() + BAN_MS);
+  await user.save();
+
+  await logActivity(user.username, 'banned', 'Admin banned user');
+  return res.json({ ok: true });
+});
+
+app.post('/api/admin/unban', authAdmin, async (req, res) => {
+  const sessionId = (req.body.sessionId || '').trim();
+  if (!validSessionId(sessionId)) return res.status(400).json({ error: 'Invalid sessionId.' });
+
+  const user = await User.findOne({ sessionId });
+  if (!user) return res.status(404).json({ error: 'User not found.' });
+
+  user.banStatus.isBanned = false;
+  user.banStatus.bannedUntil = null;
+  await user.save();
+
+  await logActivity(user.username, 'unbanned', 'Admin unbanned user');
+  return res.json({ ok: true });
+});
+
+app.post('/api/admin/reset-leaderboard', authAdmin, async (_req, res) => {
+  await User.updateMany({}, { $set: { radhaCount: 0, totalSubmissions: 0, lastActivity: new Date() } });
+  await logActivity('system', 'leaderboard reset', 'Admin reset leaderboard');
+  return res.json({ ok: true });
+});
+
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+async function start() {
+  await mongoose.connect(MONGO_URI);
+  await ensureAdminSeeded();
   app.listen(PORT, () => {
-    console.log(`Radha Naam Leaderboard running at http://localhost:${PORT}`);
+    console.log(`Server running on http://localhost:${PORT}`);
   });
+}
+
+start().catch((error) => {
+  console.error('Startup failed:', error.message);
+  process.exit(1);
 });
