@@ -41,5 +41,3 @@ node server.js
 - User app: `http://localhost:3000`
 - Admin panel: `http://localhost:3000/admin.html`
 
-## Environment
-Copy `.env.example` to `.env` and configure values.
