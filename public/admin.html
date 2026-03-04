@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard • Radha Naam Leaderboard</title>
+    <link rel="stylesheet" href="/admin.css" />
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="sidebar">
+        <h2>Admin</h2>
+        <nav>
+          <a href="#stats">Stats</a>
+          <a href="#users">Users</a>
+          <a href="#activity">Activity</a>
+          <a href="#leaderboard">Leaderboard</a>
+        </nav>
+        <button id="logoutBtn">Logout</button>
+      </aside>
+
+      <main class="main">
+        <section id="loginSection" class="card">
+          <h1>Admin Login</h1>
+          <div class="stack">
+            <input id="adminUsername" type="text" placeholder="Username" />
+            <input id="adminPassword" type="password" placeholder="Password" />
+            <button id="loginBtn">Login</button>
+            <p id="loginMessage" class="message"></p>
+          </div>
+        </section>
+
+        <section id="panel" class="hidden">
+          <section id="stats" class="card">
+            <h2>Dashboard</h2>
+            <div id="statsGrid" class="stats-grid"></div>
+          </section>
+
+          <section id="users" class="card">
+            <h2>User Management</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Radha Count</th>
+                  <th>Warnings</th>
+                  <th>Status</th>
+                  <th>Last Activity</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody"></tbody>
+            </table>
+          </section>
+
+          <section id="activity" class="card">
+            <h2>Live Activity</h2>
+            <ul id="activityList"></ul>
+          </section>
+
+          <section id="leaderboard" class="card">
+            <div class="row between">
+              <h2>Leaderboard Control</h2>
+              <button id="resetLeaderboardBtn">Reset Leaderboard</button>
+            </div>
+            <ul id="leaderboardList"></ul>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin.js"></script>
+  </body>
+</html>

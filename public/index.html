@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Radha Naam Leaderboard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header>
+        <h1>Radha Naam Leaderboard</h1>
+        <p>Type <strong>Radha</strong> with devotion and climb the leaderboard.</p>
+        <a class="admin-link" href="/admin.html">Admin Panel</a>
+      </header>
+
+      <section class="card">
+        <h2>Start Session</h2>
+        <div class="row">
+          <input id="usernameInput" type="text" maxlength="24" placeholder="Enter username" />
+          <button id="startBtn">Start</button>
+        </div>
+      </section>
+
+      <section id="typingSection" class="card hidden">
+        <div class="stats">
+          <div><span>Total Count</span><strong id="countText">0</strong></div>
+          <div><span>Warnings</span><strong id="warningText">0 / 3</strong></div>
+        </div>
+
+        <div class="row">
+          <input id="wordInput" type="text" placeholder='Type "Radha"' autocomplete="off" />
+          <button id="submitBtn">Submit</button>
+        </div>
+
+        <p id="messageText" class="message">Use only manual typing. Paste is disabled.</p>
+      </section>
+
+      <section class="card">
+        <h2>Live Leaderboard</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Username</th>
+              <th>Radha Count</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardBody"></tbody>
+        </table>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
