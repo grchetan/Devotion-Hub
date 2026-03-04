@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Radha Naam Leaderboard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-glow"></div>
+    <main class="app-card">
+      <h1>Radha Naam Leaderboard</h1>
+      <p class="subheading">Type with devotion and rise on the leaderboard ✨</p>
+      <p><a href="/admin.html">Open Admin Panel</a></p>
+
+      <section class="user-setup">
+        <input id="username" type="text" maxlength="24" placeholder="Enter your username" />
+        <button id="startBtn">Start Devotion</button>
+      </section>
+
+      <section class="typing-panel hidden" id="typingPanel">
+        <div class="stats-row">
+          <div>
+            <span class="label">Total Radha Count</span>
+            <h2 id="totalCount">0</h2>
+          </div>
+          <div>
+            <span class="label">Warnings</span>
+            <h2 id="warningsCount">0 / 3</h2>
+          </div>
+        </div>
+
+        <div class="input-row" id="inputRow">
+          <input id="radhaInput" type="text" placeholder='Type "Radha"' autocomplete="off" />
+          <button id="submitBtn">Offer</button>
+        </div>
+
+        <p id="message" class="message">Begin your chanting with pure focus.</p>
+      </section>
+
+      <section class="leaderboard-panel">
+        <div class="leaderboard-header">
+          <h3>Live Leaderboard</h3>
+          <button id="resetBtn" class="outline">Daily Reset</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Username</th>
+              <th>Total Radha Count</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardBody"></tbody>
+        </table>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
