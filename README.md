@@ -29,7 +29,7 @@ A secure devotional typing platform where users type **Radha** and compete in a 
 ## Tech Stack
 - Node.js + Express
 - MongoDB + Mongoose
-- HTML/CSS/JavaScript frontend
+- HTML/CSS/JavaScript 
 
 ## Run
 
