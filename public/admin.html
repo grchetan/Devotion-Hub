@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Panel - Radha Naam Leaderboard</title>
+    <link rel="stylesheet" href="admin.css" />
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="sidebar">
+        <h2>Admin Panel</h2>
+        <nav>
+          <a href="#dashboard">Dashboard</a>
+          <a href="#activity">Live Activity</a>
+          <a href="#users">User Management</a>
+          <a href="#abuse">Abuse Monitor</a>
+          <a href="#controls">Leaderboard Control</a>
+        </nav>
+        <button id="logoutBtn" class="ghost">Logout</button>
+      </aside>
+
+      <main class="content">
+        <section id="loginBox" class="card login">
+          <h1>Admin Login</h1>
+          <input id="adminUsername" type="text" placeholder="Username" />
+          <input id="adminPassword" type="password" placeholder="Password" />
+          <button id="loginBtn">Login</button>
+          <p id="loginMsg"></p>
+        </section>
+
+        <div id="panel" class="hidden">
+          <section id="dashboard" class="card">
+            <h1>Dashboard</h1>
+            <div class="stats" id="statsGrid"></div>
+          </section>
+
+          <section id="activity" class="card">
+            <h2>Live Activity Feed</h2>
+            <ul id="activityFeed" class="feed"></ul>
+          </section>
+
+          <section id="users" class="card">
+            <h2>User Management</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Username</th>
+                    <th>Total Radha Count</th>
+                    <th>Warnings</th>
+                    <th>Status</th>
+                    <th>Last Activity</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="usersBody"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="abuse" class="card">
+            <h2>Abuse Monitoring</h2>
+            <ul id="abuseList" class="feed"></ul>
+          </section>
+
+          <section id="controls" class="card">
+            <h2>Leaderboard Control</h2>
+            <div class="row">
+              <button id="refreshLeaderboardBtn">View Leaderboard</button>
+              <button id="resetLeaderboardBtn">Reset Leaderboard</button>
+            </div>
+            <ul id="leaderboardList" class="feed"></ul>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <script src="admin.js"></script>
+  </body>
+</html>
