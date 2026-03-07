@@ -2,8 +2,9 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs/promises');
 const rateLimit = require('express-rate-limit');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
@@ -13,23 +14,15 @@ const Activity = require('./models/Activity');
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
-const MONGO_URI =
-  process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/radha_leaderboard';
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/radha_leaderboard';
 const JWT_SECRET = process.env.JWT_SECRET || 'please-change-this-jwt-secret';
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin1234';
 const SUBMISSION_DELAY_MS = 700;
 const BAN_MS = 24 * 60 * 60 * 1000;
+const AUTH_USERS_FILE = path.join(__dirname, 'server', 'users.json');
 
-const abusiveWords = new Set([
-  'abuse',
-  'badword',
-  'idiot',
-  'stupid',
-  'hate',
-  'damn',
-  'nonsense',
-]);
+const abusiveWords = new Set(['abuse', 'badword', 'idiot', 'stupid', 'hate', 'damn', 'nonsense']);
 
 app.use(cors());
 app.use(express.json({ limit: '10kb' }));
@@ -43,8 +36,16 @@ app.use(
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Too many requests. Please try again shortly.' },
-  }),
+  })
 );
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 25,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many authentication requests. Try again later.' },
+});
 
 const adminLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -68,24 +69,42 @@ function validSessionId(value) {
   return typeof value === 'string' && value.length >= 12 && value.length <= 128;
 }
 
+function cleanEmail(value) {
+  if (typeof value !== 'string') return '';
+  return value.trim().toLowerCase();
+}
+
 function isBanned(user) {
-  return Boolean(
-    user.banStatus?.isBanned &&
-    user.banStatus?.bannedUntil &&
-    user.banStatus.bannedUntil.getTime() > Date.now(),
-  );
+  return Boolean(user.banStatus?.isBanned && user.banStatus?.bannedUntil && user.banStatus.bannedUntil.getTime() > Date.now());
+}
+
+function parseBearer(req) {
+  const authHeader = req.headers.authorization || '';
+  return authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
 }
 
 function authAdmin(req, res, next) {
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-
-  if (!token) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  const token = parseBearer(req);
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
-    req.admin = jwt.verify(token, JWT_SECRET);
+    const payload = jwt.verify(token, JWT_SECRET);
+    if (payload.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+    req.admin = payload;
+    return next();
+  } catch (_error) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+}
+
+function authUser(req, res, next) {
+  const token = parseBearer(req);
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    if (payload.role !== 'user') return res.status(403).json({ error: 'Forbidden' });
+    req.user = payload;
     return next();
   } catch (_error) {
     return res.status(401).json({ error: 'Invalid or expired token' });
@@ -96,6 +115,26 @@ async function logActivity(username, action, details = '') {
   await Activity.create({ username, action, details });
 }
 
+async function ensureAuthUserStore() {
+  await fs.mkdir(path.dirname(AUTH_USERS_FILE), { recursive: true });
+  try {
+    await fs.access(AUTH_USERS_FILE);
+  } catch (_error) {
+    await fs.writeFile(AUTH_USERS_FILE, '[]', 'utf8');
+  }
+}
+
+async function readAuthUsers() {
+  await ensureAuthUserStore();
+  const content = await fs.readFile(AUTH_USERS_FILE, 'utf8');
+  const parsed = JSON.parse(content || '[]');
+  return Array.isArray(parsed) ? parsed : [];
+}
+
+async function writeAuthUsers(users) {
+  await fs.writeFile(AUTH_USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+}
+
 async function ensureAdminSeeded() {
   const found = await Admin.findOne({ username: ADMIN_USERNAME });
   if (found) return;
@@ -104,6 +143,76 @@ async function ensureAdminSeeded() {
   await Admin.create({ username: ADMIN_USERNAME, passwordHash });
   console.log(`Seeded admin user: ${ADMIN_USERNAME}`);
 }
+
+app.post('/api/signup', authLimiter, async (req, res) => {
+  try {
+    const username = cleanUsername(req.body.username);
+    const email = cleanEmail(req.body.email);
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+    const confirmPassword = typeof req.body.confirmPassword === 'string' ? req.body.confirmPassword : '';
+
+    if (!username || !email || !password || !confirmPassword) {
+      return res.status(400).json({ error: 'All fields are required.' });
+    }
+    if (username.length < 2) return res.status(400).json({ error: 'Username is required.' });
+    if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+    if (password !== confirmPassword) return res.status(400).json({ error: 'Passwords do not match.' });
+    if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: 'Please enter a valid email.' });
+
+    const users = await readAuthUsers();
+    const duplicateUsername = users.some((u) => u.username.toLowerCase() === username.toLowerCase());
+    const duplicateEmail = users.some((u) => u.email === email);
+    if (duplicateUsername) return res.status(409).json({ error: 'Username already exists.' });
+    if (duplicateEmail) return res.status(409).json({ error: 'Email already exists.' });
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const authUser = {
+      id: `u_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      username,
+      email,
+      passwordHash,
+      createdAt: new Date().toISOString(),
+    };
+
+    users.push(authUser);
+    await writeAuthUsers(users);
+
+    return res.json({ success: true, message: 'Signup successful. Please login.' });
+  } catch (_error) {
+    return res.status(500).json({ error: 'Signup failed.' });
+  }
+});
+
+app.post('/api/login', authLimiter, async (req, res) => {
+  try {
+    const identifier = typeof req.body.identifier === 'string' ? req.body.identifier.trim() : '';
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+
+    if (!identifier || !password) {
+      return res.status(400).json({ error: 'Email/username and password are required.' });
+    }
+
+    const users = await readAuthUsers();
+    const lower = identifier.toLowerCase();
+    const account = users.find((u) => u.email === lower || u.username.toLowerCase() === lower);
+    if (!account) return res.status(401).json({ error: 'Invalid credentials.' });
+
+    const ok = await bcrypt.compare(password, account.passwordHash);
+    if (!ok) return res.status(401).json({ error: 'Invalid credentials.' });
+
+    const token = jwt.sign({ role: 'user', id: account.id, username: account.username, email: account.email }, JWT_SECRET, {
+      expiresIn: '7d',
+    });
+
+    return res.json({ success: true, token, user: { id: account.id, username: account.username, email: account.email } });
+  } catch (_error) {
+    return res.status(500).json({ error: 'Login failed.' });
+  }
+});
+
+app.get('/api/auth/me', authUser, (req, res) => {
+  return res.json({ authenticated: true, user: { id: req.user.id, username: req.user.username, email: req.user.email } });
+});
 
 app.post('/api/session/start', async (req, res) => {
   try {
@@ -119,9 +228,7 @@ app.post('/api/session/start', async (req, res) => {
     if (!user) {
       user = await User.create({ sessionId, username });
     } else if (user.username !== username) {
-      return res
-        .status(400)
-        .json({ error: 'This session already belongs to another user.' });
+      return res.status(400).json({ error: 'This session already belongs to another user.' });
     }
 
     if (isBanned(user)) {
@@ -166,18 +273,9 @@ app.post('/api/submit', async (req, res) => {
     }
 
     const now = Date.now();
-    if (
-      user.lastSubmissionAt &&
-      now - user.lastSubmissionAt.getTime() < SUBMISSION_DELAY_MS
-    ) {
-      await logActivity(
-        user.username,
-        'suspicious speed',
-        'Submission too fast',
-      );
-      return res
-        .status(429)
-        .json({ error: 'You are typing too fast. Please slow down.' });
+    if (user.lastSubmissionAt && now - user.lastSubmissionAt.getTime() < SUBMISSION_DELAY_MS) {
+      await logActivity(user.username, 'suspicious speed', 'Submission too fast');
+      return res.status(429).json({ error: 'You are typing too fast. Please slow down.' });
     }
 
     user.totalSubmissions += 1;
@@ -186,19 +284,13 @@ app.post('/api/submit', async (req, res) => {
 
     if (!word || word.includes(' ') || word.length > 16) {
       await user.save();
-      return res
-        .status(400)
-        .json({ error: 'Only one word is allowed per submission.' });
+      return res.status(400).json({ error: 'Only one word is allowed per submission.' });
     }
 
     if (abusiveWords.has(word.toLowerCase())) {
       user.warnings += 1;
       user.abusiveAttempts += 1;
-      await logActivity(
-        user.username,
-        'abusive word',
-        `Warnings: ${user.warnings}`,
-      );
+      await logActivity(user.username, 'abusive word', `Warnings: ${user.warnings}`);
 
       if (user.warnings >= 3) {
         user.banStatus.isBanned = true;
@@ -216,7 +308,7 @@ app.post('/api/submit', async (req, res) => {
       });
     }
 
-    if (word !== 'Radha' || word !== 'radha') {
+    if (word !== 'Radha') {
       await user.save();
       return res.status(400).json({ error: 'Only exact word "Radha" counts.' });
     }
@@ -239,10 +331,7 @@ app.post('/api/submit', async (req, res) => {
 
 app.get('/api/leaderboard', async (_req, res) => {
   try {
-    const users = await User.find({}, { username: 1, radhaCount: 1 })
-      .sort({ radhaCount: -1, username: 1 })
-      .limit(100)
-      .lean();
+    const users = await User.find({}, { username: 1, radhaCount: 1 }).sort({ radhaCount: -1, username: 1 }).limit(100).lean();
 
     const leaderboard = users.map((item, index) => ({
       rank: index + 1,
@@ -259,8 +348,7 @@ app.get('/api/leaderboard', async (_req, res) => {
 app.post('/api/admin/login', adminLoginLimiter, async (req, res) => {
   try {
     const username = cleanUsername(req.body.username);
-    const password =
-      typeof req.body.password === 'string' ? req.body.password : '';
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
 
     if (!username || !password) {
       return res.status(401).json({ error: 'Invalid username or password.' });
@@ -278,11 +366,7 @@ app.post('/api/admin/login', adminLoginLimiter, async (req, res) => {
       return res.status(401).json({ error: 'Invalid username or password.' });
     }
 
-    const token = jwt.sign(
-      { username: admin.username, role: 'admin' },
-      JWT_SECRET,
-      { expiresIn: '12h' },
-    );
+    const token = jwt.sign({ username: admin.username, role: 'admin' }, JWT_SECRET, { expiresIn: '12h' });
     return res.json({ token, username: admin.username });
   } catch (_error) {
     return res.status(500).json({ error: 'Login failed.' });
@@ -304,24 +388,10 @@ app.get('/api/admin/dashboard', authAdmin, async (_req, res) => {
     ] = await Promise.all([
       User.countDocuments(),
       User.countDocuments({ lastActivity: { $gte: today } }),
-      User.aggregate([
-        {
-          $group: {
-            _id: null,
-            radha: { $sum: '$radhaCount' },
-            submissions: { $sum: '$totalSubmissions' },
-          },
-        },
-      ]),
-      User.countDocuments({
-        'banStatus.isBanned': true,
-        'banStatus.bannedUntil': { $gt: new Date() },
-      }),
+      User.aggregate([{ $group: { _id: null, radha: { $sum: '$radhaCount' }, submissions: { $sum: '$totalSubmissions' } } }]),
+      User.countDocuments({ 'banStatus.isBanned': true, 'banStatus.bannedUntil': { $gt: new Date() } }),
       Activity.find().sort({ createdAt: -1 }).limit(30).lean(),
-      User.find({}, { username: 1, radhaCount: 1 })
-        .sort({ radhaCount: -1, username: 1 })
-        .limit(20)
-        .lean(),
+      User.find({}, { username: 1, radhaCount: 1 }).sort({ radhaCount: -1, username: 1 }).limit(20).lean(),
     ]);
 
     return res.json({
@@ -333,11 +403,7 @@ app.get('/api/admin/dashboard', authAdmin, async (_req, res) => {
         totalSubmissions: totals[0]?.submissions || 0,
       },
       activities: recentActivities,
-      leaderboard: leaderboard.map((u, i) => ({
-        rank: i + 1,
-        username: u.username,
-        radhaCount: u.radhaCount,
-      })),
+      leaderboard: leaderboard.map((u, i) => ({ rank: i + 1, username: u.username, radhaCount: u.radhaCount })),
     });
   } catch (_error) {
     return res.status(500).json({ error: 'Failed to load dashboard.' });
@@ -346,9 +412,7 @@ app.get('/api/admin/dashboard', authAdmin, async (_req, res) => {
 
 app.get('/api/admin/users', authAdmin, async (_req, res) => {
   try {
-    const users = await User.find()
-      .sort({ radhaCount: -1, username: 1 })
-      .lean();
+    const users = await User.find().sort({ radhaCount: -1, username: 1 }).lean();
     return res.json({ users });
   } catch (_error) {
     return res.status(500).json({ error: 'Failed to load users.' });
@@ -357,8 +421,7 @@ app.get('/api/admin/users', authAdmin, async (_req, res) => {
 
 app.post('/api/admin/ban', authAdmin, async (req, res) => {
   const sessionId = (req.body.sessionId || '').trim();
-  if (!validSessionId(sessionId))
-    return res.status(400).json({ error: 'Invalid sessionId.' });
+  if (!validSessionId(sessionId)) return res.status(400).json({ error: 'Invalid sessionId.' });
 
   const user = await User.findOne({ sessionId });
   if (!user) return res.status(404).json({ error: 'User not found.' });
@@ -373,8 +436,7 @@ app.post('/api/admin/ban', authAdmin, async (req, res) => {
 
 app.post('/api/admin/unban', authAdmin, async (req, res) => {
   const sessionId = (req.body.sessionId || '').trim();
-  if (!validSessionId(sessionId))
-    return res.status(400).json({ error: 'Invalid sessionId.' });
+  if (!validSessionId(sessionId)) return res.status(400).json({ error: 'Invalid sessionId.' });
 
   const user = await User.findOne({ sessionId });
   if (!user) return res.status(404).json({ error: 'User not found.' });
@@ -388,24 +450,17 @@ app.post('/api/admin/unban', authAdmin, async (req, res) => {
 });
 
 app.post('/api/admin/reset-leaderboard', authAdmin, async (_req, res) => {
-  await User.updateMany(
-    {},
-    { $set: { radhaCount: 0, totalSubmissions: 0, lastActivity: new Date() } },
-  );
+  await User.updateMany({}, { $set: { radhaCount: 0, totalSubmissions: 0, lastActivity: new Date() } });
   await logActivity('system', 'leaderboard reset', 'Admin reset leaderboard');
   return res.json({ ok: true });
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.get('/', (req, res) => {
+app.get('*', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.use((req, res) => {
-  res.status(404).send('Page not found');
-});
 async function start() {
+  await ensureAuthUserStore();
   await mongoose.connect(MONGO_URI);
   await ensureAdminSeeded();
   app.listen(PORT, () => {

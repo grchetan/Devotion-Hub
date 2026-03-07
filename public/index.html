@@ -1,200 +1,104 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Radha Naam Leaderboard — Devotion Hub</title>
-
-    <!-- Font -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Radha Naam Leaderboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
-
-    <!-- Styles -->
-    <link rel="stylesheet" href="/styles.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <!-- NAV -->
-    <header class="navbar" role="banner">
-      <div class="nav-left">
-        <div class="logo">
-          <img
-            src="https://img.icons8.com/emoji/48/000000/om-emoji.png"
-            alt="logo"
-            class="logo-img"
-          />
-          <div class="brand">
-            <strong>Devotion Hub</strong>
-            <small>Radha Naam Leaderboard</small>
-          </div>
-        </div>
-      </div>
-
-      <button
-        id="navToggle"
-        class="nav-toggle"
-        aria-expanded="false"
-        aria-controls="navMenu"
-      >
-        ☰
-      </button>
-
-      <nav id="navMenu" class="nav-menu" role="navigation">
+    <header class="navbar" id="home">
+      <div class="brand">Devotion Hub</div>
+      <button id="navToggle" class="nav-toggle" aria-label="Toggle menu">☰</button>
+      <nav id="navMenu" class="nav-menu">
         <a href="#home">Home</a>
         <a href="#leaderboard">Leaderboard</a>
+        <a href="/admin.html">Admin</a>
         <a href="#about">About</a>
-        <a href="#login">login</a>
+        <div id="authNav" class="auth-nav">
+          <a id="loginLink" href="/login.html">Login</a>
+          <div id="userChip" class="user-chip hidden">
+            <span id="navUsername"></span>
+            <button id="logoutBtn" class="mini-btn">Logout</button>
+          </div>
+        </div>
       </nav>
     </header>
 
-    <!-- HERO -->
-    <section id="home" class="hero">
-      <div class="hero-bg" aria-hidden="true"></div>
+    <section class="hero">
       <div class="hero-overlay"></div>
-      <div class="hero-inner">
+      <div class="hero-content">
         <h1>Radha Naam Leaderboard</h1>
-        <p class="hero-sub">
-          Type <strong>Radha</strong> with devotion — earn points, climb the
-          ranks, inspire others.
-        </p>
-        <div class="hero-actions">
-          <a class="btn hero-btn" href="#typing">Start Chanting</a>
-          <a class="btn ghost" href="#leaderboard">See Leaderboard</a>
-        </div>
-        <div class="hero-note">Safe • Fair • Devotional</div>
+        <p>Type Radha with devotion and rise on the leaderboard.</p>
+        <a href="#typing" class="hero-btn">Start Chanting</a>
       </div>
     </section>
 
-    <!-- MAIN -->
     <main class="page">
-      <!-- HOW IT WORKS -->
-      <section id="about" class="panel how-it-works">
-        <h2>How it works</h2>
+      <section class="panel how-it-works" id="about">
+        <h2>How It Works</h2>
         <div class="steps">
-          <div class="step">
-            <div class="step-num">1</div>
-            <h3>Enter a username</h3>
-            <p>Create a simple username to start your session.</p>
-          </div>
-          <div class="step">
-            <div class="step-num">2</div>
-            <h3>Type “Radha”</h3>
-            <p>
-              Type the exact word <em>Radha</em> — no paste allowed. Each
-              correct entry = +1 point.
-            </p>
-          </div>
-          <div class="step">
-            <div class="step-num">3</div>
-            <h3>Rise on the leaderboard</h3>
-            <p>
-              Leaderboard updates frequently. Keep it fair, keep it devotional.
-            </p>
-          </div>
+          <article>
+            <h3>1. Enter Username</h3>
+            <p>Start your devotional session with a unique username.</p>
+          </article>
+          <article>
+            <h3>2. Type “Radha”</h3>
+            <p>Each exact entry gives +1 point and updates your spiritual score.</p>
+          </article>
+          <article>
+            <h3>3. Climb Rankings</h3>
+            <p>Rise in real-time leaderboard while keeping pure and fair typing.</p>
+          </article>
         </div>
       </section>
 
-      <!-- TYPING PANEL -->
-      <section id="typing" class="panel typing-wrap">
-        <h2>Begin your devotion</h2>
-
-        <div class="controls">
-          <input
-            id="usernameInput"
-            type="text"
-            maxlength="24"
-            placeholder="Enter username (eg. Chetan)"
-          />
-          <button id="startBtn" class="btn">Start Session</button>
-          <button id="resetDailyBtn" class="btn ghost small">
-            Reset Daily (Admin)
-          </button>
+      <section class="panel typing-wrap" id="typing">
+        <h2>Begin Your Devotion</h2>
+        <div class="row">
+          <input id="usernameInput" type="text" maxlength="24" placeholder="Enter username" />
+          <button id="startBtn" class="btn">Start</button>
         </div>
 
-        <div id="typingCard" class="typing-card hidden" aria-hidden="true">
-          <div class="top-stats">
-            <div class="stat">
-              <small>Total Count</small>
-              <div id="countText" class="big">0</div>
-            </div>
-            <div class="stat">
-              <small>Warnings</small>
-              <div id="warningText" class="big">0 / 3</div>
-            </div>
-            <div class="stat">
-              <small>Progress</small>
-              <div id="progressLabel" class="big">0%</div>
-            </div>
+        <div id="typingSection" class="typing-card hidden">
+          <div class="stats">
+            <div><span>Total Count</span><strong id="countText">0</strong></div>
+            <div><span>Warnings</span><strong id="warningText">0 / 3</strong></div>
+            <div><span>Devotion Progress</span><strong id="progressLabel">0%</strong></div>
           </div>
 
-          <div class="progress-track" aria-hidden="true">
-            <div id="progressBar" class="progress-fill" style="width: 0%"></div>
+          <div class="progress-track"><div id="progressBar" class="progress-fill"></div></div>
+
+          <div class="row">
+            <input id="wordInput" class="radha-input" type="text" placeholder='Type "Radha"' autocomplete="off" />
+            <button id="submitBtn" class="btn pulse">Offer</button>
           </div>
 
-          <div class="typing-row">
-            <input
-              id="wordInput"
-              class="radha-input"
-              type="text"
-              placeholder='Type "Radha" (press Enter)'
-              autocomplete="off"
-            />
-            <button id="submitBtn" class="btn big">Offer</button>
-          </div>
-
-          <p id="messageText" class="message note">
-            Manual typing only. Paste is disabled for fair devotion.
-          </p>
-
-          <div
-            id="toast"
-            class="toast hidden"
-            role="status"
-            aria-live="polite"
-          ></div>
+          <p id="messageText" class="message">Use only manual typing. Paste is disabled.</p>
         </div>
       </section>
 
-      <!-- LEADERBOARD -->
-      <section id="leaderboard" class="panel leaderboard-wrap">
-        <h2>Leaderboard</h2>
-
-        <div id="topThree" class="top-three" aria-hidden="true"></div>
-
+      <section class="panel leaderboard-wrap" id="leaderboard">
+        <h2>Leaderboard Preview</h2>
+        <div id="topThree" class="top-three"></div>
         <div class="leaderboard-card">
-          <table aria-label="Leaderboard table">
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>User</th>
-                <th class="center">Radha Count</th>
-              </tr>
-            </thead>
+          <table>
+            <thead><tr><th>Rank</th><th>User</th><th>Radha Count</th></tr></thead>
             <tbody id="leaderboardBody"></tbody>
           </table>
         </div>
       </section>
 
-      <!-- CTA -->
       <section class="panel cta">
-        <h2>Keep your devotion alive</h2>
-        <p>
-          Daily chanting can be a small but powerful habit. Invite friends and
-          make it joyful.
-        </p>
+        <h2>Call To Action</h2>
+        <p>Let devotion become your daily habit. Chant, rise, and inspire others.</p>
         <a href="#typing" class="btn">Type Radha Now</a>
       </section>
     </main>
 
-    <footer class="footer">
-      <div>🙏 Devotion Hub — Radha Naam Leaderboard</div>
-      <div class="foot-note">Built with devotion • Be kind • No cheating</div>
-    </footer>
-
-    <!-- Script -->
     <script src="/app.js"></script>
   </body>
 </html>
