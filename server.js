@@ -216,7 +216,7 @@ app.post('/api/submit', async (req, res) => {
       });
     }
 
-    if (word !== 'Radha') {
+    if (word !== 'Radha' || word !== 'radha') {
       await user.save();
       return res.status(400).json({ error: 'Only exact word "Radha" counts.' });
     }
