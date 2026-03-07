@@ -12,6 +12,10 @@ const progressBar = document.getElementById('progressBar');
 const progressLabel = document.getElementById('progressLabel');
 const navToggle = document.getElementById('navToggle');
 const navMenu = document.getElementById('navMenu');
+const loginLink = document.getElementById('loginLink');
+const userChip = document.getElementById('userChip');
+const navUsername = document.getElementById('navUsername');
+const logoutBtn = document.getElementById('logoutBtn');
 
 const sessionId = localStorage.getItem('radhaSessionId') || crypto.randomUUID();
 localStorage.setItem('radhaSessionId', sessionId);
@@ -22,6 +26,30 @@ let started = false;
 function setMessage(text, type = '') {
   messageText.textContent = text;
   messageText.className = `message ${type}`.trim();
+}
+
+function updateAuthUI() {
+  const token = localStorage.getItem('devotionAuthToken');
+  const userRaw = localStorage.getItem('devotionAuthUser');
+
+  if (!token || !userRaw) {
+    loginLink?.classList.remove('hidden');
+    userChip?.classList.add('hidden');
+    return;
+  }
+
+  try {
+    const user = JSON.parse(userRaw);
+    navUsername.textContent = user.username;
+    usernameInput.value = user.username;
+    loginLink?.classList.add('hidden');
+    userChip?.classList.remove('hidden');
+  } catch (_error) {
+    localStorage.removeItem('devotionAuthToken');
+    localStorage.removeItem('devotionAuthUser');
+    loginLink?.classList.remove('hidden');
+    userChip?.classList.add('hidden');
+  }
 }
 
 function updateProgress(count) {
@@ -165,8 +193,15 @@ navToggle?.addEventListener('click', () => {
   navMenu.classList.toggle('open');
 });
 
+logoutBtn?.addEventListener('click', () => {
+  localStorage.removeItem('devotionAuthToken');
+  localStorage.removeItem('devotionAuthUser');
+  updateAuthUI();
+});
+
 startBtn.addEventListener('click', startSession);
 submitBtn.addEventListener('click', submitWord);
 
+updateAuthUI();
 setInterval(loadLeaderboard, 5000);
 loadLeaderboard();

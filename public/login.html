@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login • Devotion Hub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="auth-page">
+    <main class="auth-wrapper">
+      <section class="auth-card">
+        <h1>Welcome Back</h1>
+        <p>Login to continue your devotional journey.</p>
+        <form id="loginForm" class="stack" novalidate>
+          <input id="identifier" type="text" placeholder="Email or Username" required />
+          <input id="password" type="password" placeholder="Password" required />
+          <button type="submit" class="btn">Login</button>
+          <p id="formMessage" class="message"></p>
+        </form>
+        <p class="auth-alt">Don’t have an account? <a href="/signup.html">Sign up</a></p>
+        <a class="auth-alt" href="/">← Back to Home</a>
+      </section>
+    </main>
+    <script src="/login.js"></script>
+  </body>
+</html>
