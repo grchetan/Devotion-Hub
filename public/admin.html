@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard • Radha Naam Leaderboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/admin.css" />
+  </head>
+  <body>
+    <div class="admin-layout">
+      <aside class="sidebar">
+        <h2>Devotion Hub</h2>
+        <nav>
+          <a href="#dashboard">Dashboard</a>
+          <a href="#users">Users</a>
+          <a href="#activity">Activity</a>
+          <a href="#abuse">Abuse Monitor</a>
+          <a href="#controls">Leaderboard Control</a>
+        </nav>
+        <button id="logoutBtn" class="ghost">Logout</button>
+      </aside>
+
+      <main class="main">
+        <section id="loginSection" class="panel login-card">
+          <h1>Admin Login</h1>
+          <div class="stack">
+            <input id="adminUsername" type="text" placeholder="Username" />
+            <input id="adminPassword" type="password" placeholder="Password" />
+            <button id="loginBtn" class="btn">Login</button>
+            <p id="loginMessage" class="msg"></p>
+          </div>
+        </section>
+
+        <section id="panel" class="hidden">
+          <section id="dashboard" class="panel">
+            <div class="row between">
+              <h2>Dashboard</h2>
+              <div class="filters">
+                <input id="searchUserInput" type="text" placeholder="Search username" />
+                <label class="toggle"><input id="filterBannedInput" type="checkbox" /> Show banned only</label>
+              </div>
+            </div>
+            <div id="statsGrid" class="stats-grid"></div>
+
+            <div class="charts">
+              <article class="chart-card">
+                <h3>User Health (Bar)</h3>
+                <canvas id="barChart" width="560" height="220"></canvas>
+              </article>
+              <article class="chart-card">
+                <h3>Radha Progress (Line)</h3>
+                <canvas id="lineChart" width="560" height="220"></canvas>
+              </article>
+            </div>
+          </section>
+
+          <section id="users" class="panel">
+            <h2>User Management</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Username</th>
+                    <th>Radha Count</th>
+                    <th>Warnings</th>
+                    <th>Status</th>
+                    <th>Last Activity</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="usersTableBody"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="activity" class="panel">
+            <h2>Activity Monitor</h2>
+            <ul id="activityList" class="activity-list"></ul>
+          </section>
+
+          <section id="abuse" class="panel">
+            <h2>Abuse Monitor</h2>
+            <ul id="abuseList" class="activity-list"></ul>
+          </section>
+
+          <section id="controls" class="panel">
+            <div class="row between">
+              <h2>Leaderboard Control</h2>
+              <button id="resetLeaderboardBtn" class="btn">Reset Leaderboard</button>
+            </div>
+            <ul id="leaderboardList" class="activity-list"></ul>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin.js"></script>
+  </body>
+</html>
