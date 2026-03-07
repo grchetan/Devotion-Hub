@@ -98,7 +98,7 @@ body {
 .hero-bg {
   position: absolute;
   inset: 0;
-  background-image: url('https://images.unsplash.com/photo-1567591414240-e9c1e59f5d2f?auto=format&fit=crop&w=1600&q=80');
+  background-image: url('./assets/home-bg.png');
   background-size: cover;
   background-position: center;
   filter: contrast(0.9) brightness(0.6);
