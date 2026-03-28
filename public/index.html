@@ -3,22 +3,34 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Radha Naam Leaderboard</title>
+    <title>Devotion Hub • Radha Naam</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <!-- NAVBAR -->
     <header class="navbar" id="home">
-      <div class="brand">Devotion Hub</div>
-      <button id="navToggle" class="nav-toggle" aria-label="Toggle menu">☰</button>
+      <div class="brand">🌸 Devotion Hub</div>
+      <button id="navToggle" class="nav-toggle" aria-label="Toggle menu">
+        ☰
+      </button>
       <nav id="navMenu" class="nav-menu">
         <a href="#home">Home</a>
         <a href="#leaderboard">Leaderboard</a>
         <a href="/admin.html">Admin</a>
         <a href="#about">About</a>
         <div id="authNav" class="auth-nav">
+          <button id="darkToggleBtn" class="icon-btn" title="Toggle Dark Mode">
+            🌙
+          </button>
+          <button id="soundToggleBtn" class="icon-btn" title="Toggle Sound">
+            🔊
+          </button>
           <a id="loginLink" href="/login.html">Login</a>
           <div id="userChip" class="user-chip hidden">
             <span id="navUsername"></span>
@@ -28,6 +40,7 @@
       </nav>
     </header>
 
+    <!-- HERO -->
     <section class="hero">
       <div class="hero-overlay"></div>
       <div class="hero-content">
@@ -38,6 +51,7 @@
     </section>
 
     <main class="page">
+      <!-- HOW IT WORKS -->
       <section class="panel how-it-works" id="about">
         <h2>How It Works</h2>
         <div class="steps">
@@ -46,58 +60,150 @@
             <p>Start your devotional session with a unique username.</p>
           </article>
           <article>
-            <h3>2. Type “Radha”</h3>
-            <p>Each exact entry gives +1 point and updates your spiritual score.</p>
+            <h3>2. Type "Radha"</h3>
+            <p>
+              Each exact entry gives +1 point and updates your spiritual score.
+            </p>
           </article>
           <article>
             <h3>3. Climb Rankings</h3>
-            <p>Rise in real-time leaderboard while keeping pure and fair typing.</p>
+            <p>
+              Rise in real-time leaderboard while maintaining a daily streak.
+            </p>
           </article>
         </div>
       </section>
 
+      <!-- TYPING SECTION -->
       <section class="panel typing-wrap" id="typing">
         <h2>Begin Your Devotion</h2>
         <div class="row">
-          <input id="usernameInput" type="text" maxlength="24" placeholder="Enter username" />
+          <input
+            id="usernameInput"
+            type="text"
+            maxlength="24"
+            placeholder="Enter username"
+          />
           <button id="startBtn" class="btn">Start</button>
         </div>
 
         <div id="typingSection" class="typing-card hidden">
+          <!-- STATS ROW -->
           <div class="stats">
             <div><span>Total Count</span><strong id="countText">0</strong></div>
-            <div><span>Warnings</span><strong id="warningText">0 / 3</strong></div>
-            <div><span>Devotion Progress</span><strong id="progressLabel">0%</strong></div>
+            <div><span>🔥 Streak</span><strong id="streakText">0</strong></div>
+            <div>
+              <span>🏆 Best Streak</span
+              ><strong id="longestStreakText">0</strong>
+            </div>
+            <div>
+              <span>Warnings</span><strong id="warningText">0 / 3</strong>
+            </div>
+            <div>
+              <span>Progress</span><strong id="progressLabel">0%</strong>
+            </div>
           </div>
 
-          <div class="progress-track"><div id="progressBar" class="progress-fill"></div></div>
+          <!-- TOTAL PROGRESS -->
+          <div class="progress-track">
+            <div id="progressBar" class="progress-fill"></div>
+          </div>
 
+          <!-- DAILY GOAL -->
+          <div class="daily-goal-wrap">
+            <div class="daily-goal-header">
+              <span
+                >🎯 Daily Goal: <strong id="dailyCountText">0</strong> /
+                <strong id="dailyGoalText">50</strong></span
+              >
+              <div class="goal-set-row">
+                <input
+                  id="dailyGoalInput"
+                  type="number"
+                  min="1"
+                  max="9999"
+                  value="50"
+                  placeholder="Goal"
+                  class="goal-input"
+                />
+                <button id="setGoalBtn" class="mini-btn">Set</button>
+              </div>
+            </div>
+            <div class="progress-track daily-track">
+              <div id="dailyBar" class="progress-fill daily-fill"></div>
+            </div>
+          </div>
+
+          <!-- INPUT -->
           <div class="row">
-            <input id="wordInput" class="radha-input" type="text" placeholder='Type "Radha"' autocomplete="off" />
+            <input
+              id="wordInput"
+              class="radha-input"
+              type="text"
+              placeholder='Type "Radha"'
+              autocomplete="off"
+            />
             <button id="submitBtn" class="btn pulse">Offer</button>
           </div>
 
-          <p id="messageText" class="message">Use only manual typing. Paste is disabled.</p>
+          <div class="row between">
+            <p id="messageText" class="message">
+              Use only manual typing. Paste is disabled.
+            </p>
+            <button id="shareBtn" class="share-btn" title="Share your stats">
+              📤 Share
+            </button>
+          </div>
         </div>
       </section>
 
+      <!-- ACHIEVEMENTS -->
+      <section class="panel" id="achievements">
+        <h2>Achievements</h2>
+        <p class="muted-text">
+          Earn badges by chanting and maintaining streaks.
+        </p>
+        <div id="achievementsGrid" class="achievements-grid"></div>
+      </section>
+
+      <!-- LEADERBOARD -->
       <section class="panel leaderboard-wrap" id="leaderboard">
         <h2>Leaderboard Preview</h2>
         <div id="topThree" class="top-three"></div>
         <div class="leaderboard-card">
           <table>
-            <thead><tr><th>Rank</th><th>User</th><th>Radha Count</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>User</th>
+                <th>Count</th>
+                <th>Streak</th>
+                <th>Badges</th>
+              </tr>
+            </thead>
             <tbody id="leaderboardBody"></tbody>
           </table>
         </div>
       </section>
 
+      <!-- CTA -->
       <section class="panel cta">
         <h2>Call To Action</h2>
-        <p>Let devotion become your daily habit. Chant, rise, and inspire others.</p>
+        <p>
+          Let devotion become your daily habit. Chant, rise, and inspire others.
+        </p>
         <a href="#typing" class="btn">Type Radha Now</a>
       </section>
     </main>
+
+    <!-- ACHIEVEMENT POPUP -->
+    <div id="achPopup" class="ach-popup hidden">
+      <div class="ach-popup-inner">
+        <button id="achPopupClose" class="ach-close">✕</button>
+        <h3>🎉 Achievement Unlocked!</h3>
+        <div id="achPopupBody"></div>
+      </div>
+    </div>
 
     <script src="/app.js"></script>
   </body>
